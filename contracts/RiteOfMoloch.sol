@@ -37,13 +37,20 @@ contract RiteOfMoloch is ERC721, Ownable {
      MAPPING STRUCTS EVENTS
      *************************/
 
+    // logs new initiation data
     event Initiation(address newInitiate, uint256 tokenId, uint256 stake);
+
+    // logs data when failed initiates get slashed
+    event Sacrifice(address sacrifice, uint256 slashedAmount, address slasher);
 
     // initiation participant token balances
     mapping(address => uint256) private _staked;
 
     // the time a participant joined the initiation
     mapping(address => uint256) public initiationStart;
+
+    // the number of user's a member has sacrificed
+    mapping(address => uint256) public totalSlash;
 
     /*************************
      STATE VARIABLES
@@ -114,7 +121,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     * @dev Allows users to join the DAO initiation
     * Stakes required tokens and mints soul bound token
     */
-    function joinInitiation() public {
+    function joinInitiation() public callerIsUser {
 
         // enforce the initiate transfers correct tokens to the contract
         require(_stake(), "Staking failed!");
@@ -129,7 +136,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     * @param failedInitiates an array of user's who have failed to join the DAO
     * @param indices the indexes which correspond to the allInitiates array
     */
-    function sacrifice(address[] calldata failedInitiates, uint256[] calldata indices) public {
+    function sacrifice(address[] calldata failedInitiates, uint256[] calldata indices) public onlyMember {
 
         _darkRitual(failedInitiates, indices);
 
@@ -162,7 +169,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     /**
     * @dev Allows DAO members to claim their initiation stake
     */
-    function claimStake() external onlyMember {
+    function claimStake() external callerIsUser onlyMember {
 
         require(_claim(), "Claim failed!");
 
@@ -261,10 +268,16 @@ contract RiteOfMoloch is ERC721, Ownable {
             // drain the life force from the sacrifice
             require(_token.transferFrom(address(this), treasury, balance), "Failed Sacrifice!");
 
+            // log sacrifice data
+            emit Sacrifice(initiate, balance, msg.sender);
+
             // remove the sacrifice from the initiate array
             delete allInitiates[_indices[i]];
 
         }
+
+        // increase the slasher's essence
+        totalSlash[msg.sender] += _failedInitiates.length;
 
     }
 
@@ -281,6 +294,56 @@ contract RiteOfMoloch is ERC721, Ownable {
 
         // enforce that the user is a member
         require(shares >= _minimumShare, "You must be a member!");
+    }
+
+    /*************************
+     VIEW AND PURE FUNCTIONS
+     *************************/
+
+    function getSacrifices() public view returns (address[] memory failedInitiates, uint256[] memory indices) {
+
+        uint256 length;
+
+        for (uint256 i = 0; i < allInitiates.length; ++i) {
+
+            uint256 startTime = initiationStart[allInitiates[i]];
+
+            uint256 duration = block.timestamp - startTime;
+
+            if (duration >= maximumTime) {
+
+                length += 1;
+
+            }
+
+        }
+
+        address[] memory sacrifices = new address[](length);
+
+        uint256[] memory sacrificeIndices = new uint256[](length);
+
+        uint256 count;
+
+        for (uint256 i = 0; i < allInitiates.length; ++i) {
+
+            uint256 startTime = initiationStart[allInitiates[i]];
+
+            uint256 duration = block.timestamp - startTime;
+
+            if (duration >= maximumTime) {
+
+                sacrifices[count] = allInitiates[i];
+
+                sacrificeIndices[count] = i;
+
+                count += 1;
+
+            }
+
+        }
+
+        return(sacrifices, sacrificeIndices);
+
     }
 
     /*************************
