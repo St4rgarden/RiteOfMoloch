@@ -242,6 +242,12 @@ contract RiteOfMoloch is ERC721, Ownable {
     */
     function _darkRitual(address[] calldata _failedInitiates, uint256[] calldata _indices) private {
 
+        // enforce that the array lengths match
+        require(_failedInitiates.length == _indices.length, "Arrays don't match!");
+
+        // the total amount of blood debt
+        uint256 total;
+
         for (uint256 i = 0; i < _failedInitiates.length; ++i) {
 
             // store each initiate's address
@@ -256,17 +262,14 @@ contract RiteOfMoloch is ERC721, Ownable {
             // enforce each initiate is ready to be sacrificed
             require(block.timestamp - startTime > maximumTime, "You can't sacrifice newbies!");
 
-            // enforce that the array lengths match
-            require(_failedInitiates.length == _indices.length, "Arrays don't match!");
-
             // enforce that the failed initiate and indices arrays are a match
             require(_failedInitiates[i] == allInitiates[_indices[i]], "You can't sacrifice the innocent!");
 
             // change the sacrifice's balance
             _staked[initiate] = 0;
 
-            // drain the life force from the sacrifice
-            require(_token.transferFrom(address(this), treasury, balance), "Failed Sacrifice!");
+            // calculate the total blood debt
+            total += balance;
 
             // log sacrifice data
             emit Sacrifice(initiate, balance, msg.sender);
@@ -275,6 +278,9 @@ contract RiteOfMoloch is ERC721, Ownable {
             delete allInitiates[_indices[i]];
 
         }
+
+        // drain the life force from the sacrifice
+        require(_token.transferFrom(address(this), treasury, total), "Failed Sacrifice!");
 
         // increase the slasher's essence
         totalSlash[msg.sender] += _failedInitiates.length;
