@@ -182,7 +182,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     /**
     * @dev Stakes the user's tokens
     */
-    function _stake() internal returns (bool) {
+    function _stake() internal virtual returns (bool) {
 
         // enforce that the initiate hasn't previously staked
         require(_staked[msg.sender] == 0, "Already joined the initiation!");
@@ -199,7 +199,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     /**
     * @dev Claims the successful new members stake
     */
-    function _claim(uint256 _userIndex) internal returns (bool) {
+    function _claim(uint256 _userIndex) internal virtual returns (bool) {
 
         // enforce that the initiate has stake
         require(_staked[msg.sender] > 0, "User has no stake!!");
@@ -224,7 +224,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     /**
     * @dev Mints soul bound tokens to the initiate
     */
-    function _soulBind() internal {
+    function _soulBind() internal virtual {
 
         // enforce that the user hasn't been an initiate before
         require(balanceOf(msg.sender) == 0, "You were sacrificed in a Dark Ritual!");
@@ -247,7 +247,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     * @param _failedInitiates an array of user's who have failed to join the DAO
     * @param _indices the indexes which correspond to the allInitiates array
     */
-    function _darkRitual(address[] calldata _failedInitiates, uint256[] calldata _indices) private {
+    function _darkRitual(address[] calldata _failedInitiates, uint256[] calldata _indices) internal virtual {
 
         // enforce that the array lengths match
         require(_failedInitiates.length == _indices.length, "Arrays don't match!");
@@ -297,7 +297,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     /**
     * @dev Authenticates users through the DAO contract
     */
-    function _checkMember() internal {
+    function _checkMember() internal virtual {
 
         // access membership data from the DAO
         MolochDAO.Member memory member = _dao.members(msg.sender);
