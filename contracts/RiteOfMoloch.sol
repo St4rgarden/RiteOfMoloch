@@ -136,7 +136,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     * @param failedInitiates an array of user's who have failed to join the DAO
     * @param indices the indexes which correspond to the allInitiates array
     */
-    function sacrifice(address[] calldata failedInitiates, uint256[] calldata indices) public onlyMember {
+    function sacrifice(address[] calldata failedInitiates, uint256[] calldata indices) public callerIsUser onlyMember {
 
         _darkRitual(failedInitiates, indices);
 
@@ -169,9 +169,9 @@ contract RiteOfMoloch is ERC721, Ownable {
     /**
     * @dev Allows DAO members to claim their initiation stake
     */
-    function claimStake() external callerIsUser onlyMember {
+    function claimStake(uint256 userIndex) external callerIsUser onlyMember {
 
-        require(_claim(), "Claim failed!");
+        require(_claim(userIndex), "Claim failed!");
 
     }
 
@@ -199,10 +199,13 @@ contract RiteOfMoloch is ERC721, Ownable {
     /**
     * @dev Claims the successful new members stake
     */
-    function _claim() internal returns (bool) {
+    function _claim(uint256 _userIndex) internal returns (bool) {
 
         // enforce that the initiate has stake
         require(_staked[msg.sender] > 0, "User has no stake!!");
+
+        // enforce that the function caller and index match
+        require(allInitiates[_userIndex] == msg.sender, "Can only claim your own stake!");
 
         // store the user's balance
         uint256 balance = _staked[msg.sender];
@@ -210,8 +213,12 @@ contract RiteOfMoloch is ERC721, Ownable {
         // adjust the balance
         _staked[msg.sender] = 0;
 
+        // the initiate has graduated; delete them from initiate tracking
+        delete allInitiates[_userIndex];
+
         // return the new member's original stake
         return _token.transferFrom(address(this), msg.sender, balance);
+
     }
 
     /**
@@ -306,42 +313,38 @@ contract RiteOfMoloch is ERC721, Ownable {
      VIEW AND PURE FUNCTIONS
      *************************/
 
+    /**
+    * @dev returns all initiate addresses that are ready to be sacrificed; and their element position in the
+    * initiate array
+    */
     function getSacrifices() public view returns (address[] memory failedInitiates, uint256[] memory indices) {
 
-        uint256 length;
+        // an array to store our potential sacrifices
+        address[] memory sacrifices;
 
-        for (uint256 i = 0; i < allInitiates.length; ++i) {
+        // the indices that correspond to each sacrifice
+        uint256[] memory sacrificeIndices;
 
-            uint256 startTime = initiationStart[allInitiates[i]];
-
-            uint256 duration = block.timestamp - startTime;
-
-            if (duration >= maximumTime) {
-
-                length += 1;
-
-            }
-
-        }
-
-        address[] memory sacrifices = new address[](length);
-
-        uint256[] memory sacrificeIndices = new uint256[](length);
-
+        // increment each time we find a proper sacrifice
         uint256 count;
 
         for (uint256 i = 0; i < allInitiates.length; ++i) {
 
+            // access each initiate's start time
             uint256 startTime = initiationStart[allInitiates[i]];
 
+            // calculate the time an initiate has been in the cohort
             uint256 duration = block.timestamp - startTime;
 
             if (duration >= maximumTime) {
 
+                // add the failed initiate address to the sacrifice array
                 sacrifices[count] = allInitiates[i];
 
+                // add their indice
                 sacrificeIndices[count] = i;
 
+                // increment our counter
                 count += 1;
 
             }
@@ -360,6 +363,7 @@ contract RiteOfMoloch is ERC721, Ownable {
         return "https://www.raidguild.org/riteofraidguild/";
     }
 
+    // Cohort NFTs cannot be transferred
     function _transfer(address from, address to, uint256 tokenId)
         internal
         virtual
