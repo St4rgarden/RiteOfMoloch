@@ -3,7 +3,7 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
 interface MolochDAO {
@@ -30,8 +30,12 @@ interface Token {
 
 }
 
-contract RiteOfMoloch is ERC721, Ownable {
+contract RiteOfMoloch is ERC721, AccessControl {
     using Counters for Counters.Counter;
+
+    // role constants
+    bytes32 public constant ADMIN = keccak256("ADMIN");
+    bytes32 public constant OPERATOR = keccak256("OPERATOR");
 
     /*************************
      MAPPING STRUCTS EVENTS
@@ -88,6 +92,11 @@ contract RiteOfMoloch is ERC721, Ownable {
 
         // Set the minimum shares
         _minimumShare = shareThreshold;
+
+        // grant roles
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(ADMIN, msg.sender);
+        _grantRole(OPERATOR, msg.sender);
 
     }
 
@@ -151,7 +160,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     * @dev Allows DAO members to change the staking requirement
     * @param newMinimumStake the minimum quantity of tokens a user must stake to join the cohort
     */
-    function setMinimumStake(uint256 newMinimumStake) public onlyOwner {
+    function setMinimumStake(uint256 newMinimumStake) public onlyRole(ADMIN) {
 
         // set the minimum staking requirement
         minimumStake = newMinimumStake;
@@ -162,7 +171,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     * @dev Allows changing the maximum initiation duration
     * @param newMaxTime the length in seconds until an initiate's stake is forfeit
     */
-    function setMaxDuration(uint256 newMaxTime) public onlyOwner {
+    function setMaxDuration(uint256 newMaxTime) public onlyRole(OPERATOR) {
 
         // set the maximum length of time for initiations
         maximumTime = newMaxTime;
@@ -173,7 +182,7 @@ contract RiteOfMoloch is ERC721, Ownable {
     * @dev Allows changing the DAO member share threshold
     * @param newShareThreshold the number of shares required to be considered a DAO member
     */
-    function setShareThreshold(uint256 newShareThreshold) public onlyOwner {
+    function setShareThreshold(uint256 newShareThreshold) public onlyRole(ADMIN) {
 
         // set the maximum length of time for initiations
         _minimumShare = newShareThreshold;
@@ -386,6 +395,16 @@ contract RiteOfMoloch is ERC721, Ownable {
         virtual
         override {
         revert();
+    }
+
+    // The following functions are overrides required by Solidity.
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721, AccessControl)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 
 }
