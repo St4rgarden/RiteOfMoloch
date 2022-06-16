@@ -98,6 +98,9 @@ contract RiteOfMoloch is ERC721, AccessControl {
         _grantRole(ADMIN, msg.sender);
         _grantRole(OPERATOR, msg.sender);
 
+        // setup the ADMIN role to manage the OPERATOR role
+        _setRoleAdmin(OPERATOR, ADMIN);
+
     }
 
     /*************************
