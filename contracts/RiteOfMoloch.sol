@@ -47,6 +47,9 @@ contract RiteOfMoloch is ERC721, AccessControl {
     // logs data when failed initiates get slashed
     event Sacrifice(address sacrifice, uint256 slashedAmount, address slasher);
 
+    // logs data when a user successfully claims back their stake
+    event Claim(address newMember, uint256 claimAmount);
+
     // initiation participant token balances
     mapping(address => uint256) private _staked;
 
@@ -243,6 +246,9 @@ contract RiteOfMoloch is ERC721, AccessControl {
 
         // the initiate has graduated; delete them from initiate tracking
         delete allInitiates[_userIndex];
+
+        // log data for this successful claim
+        emit Claim(msg.sender, balance);
 
         // return the new member's original stake
         return _token.transferFrom(address(this), msg.sender, balance);
