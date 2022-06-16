@@ -38,7 +38,7 @@ contract RiteOfMoloch is ERC721, Ownable {
      *************************/
 
     // logs new initiation data
-    event Initiation(address newInitiate, uint256 tokenId, uint256 stake);
+    event Initiation(address newInitiate, address benefactor, uint256 tokenId, uint256 stake);
 
     // logs data when failed initiates get slashed
     event Sacrifice(address sacrifice, uint256 slashedAmount, address slasher);
@@ -119,15 +119,16 @@ contract RiteOfMoloch is ERC721, Ownable {
 
     /**
     * @dev Allows users to join the DAO initiation
+    * @param user the address which will be activated for the cohort
     * Stakes required tokens and mints soul bound token
     */
-    function joinInitiation() public callerIsUser {
+    function joinInitiation(address user) public callerIsUser {
 
         // enforce the initiate transfers correct tokens to the contract
-        require(_stake(), "Staking failed!");
+        require(_stake(user), "Staking failed!");
 
         // issue a soul bound token
-        _soulBind();
+        _soulBind(user);
 
     }
 
@@ -148,6 +149,7 @@ contract RiteOfMoloch is ERC721, Ownable {
 
     /**
     * @dev Allows DAO members to change the staking requirement
+    * @param newMinimumStake the minimum quantity of tokens a user must stake to join the cohort
     */
     function setMinimumStake(uint256 newMinimumStake) public onlyOwner {
 
@@ -158,6 +160,7 @@ contract RiteOfMoloch is ERC721, Ownable {
 
     /**
     * @dev Allows changing the maximum initiation duration
+    * @param newMaxTime the length in seconds until an initiate's stake is forfeit
     */
     function setMaxDuration(uint256 newMaxTime) public onlyOwner {
 
@@ -167,7 +170,19 @@ contract RiteOfMoloch is ERC721, Ownable {
     }
 
     /**
+    * @dev Allows changing the DAO member share threshold
+    * @param newShareThreshold the number of shares required to be considered a DAO member
+    */
+    function setShareThreshold(uint256 newShareThreshold) public onlyOwner {
+
+        // set the maximum length of time for initiations
+        _minimumShare = newShareThreshold;
+
+    }
+
+    /**
     * @dev Allows DAO members to claim their initiation stake
+    * @param userIndex the index that corresponds to the claimant in the allInitiates array
     */
     function claimStake(uint256 userIndex) external callerIsUser onlyMember {
 
@@ -181,17 +196,18 @@ contract RiteOfMoloch is ERC721, Ownable {
 
     /**
     * @dev Stakes the user's tokens
+    * @param _user the address to activate for the cohort
     */
-    function _stake() internal virtual returns (bool) {
+    function _stake(address _user) internal virtual returns (bool) {
 
         // enforce that the initiate hasn't previously staked
-        require(_staked[msg.sender] == 0, "Already joined the initiation!");
+        require(_staked[_user] == 0, "Already joined the initiation!");
 
         // change the initiate's stake total
-        _staked[msg.sender] = minimumStake;
+        _staked[_user] = minimumStake;
 
         // add the initiate's address to the tracking array
-        allInitiates.push(msg.sender);
+        allInitiates.push(_user);
 
         return _token.transferFrom(msg.sender, address(this), minimumStake);
     }
@@ -223,23 +239,24 @@ contract RiteOfMoloch is ERC721, Ownable {
 
     /**
     * @dev Mints soul bound tokens to the initiate
+    * @param _user the recipient of the cohort SBT
     */
-    function _soulBind() internal virtual {
+    function _soulBind(address _user) internal virtual {
 
         // enforce that the user hasn't been an initiate before
-        require(balanceOf(msg.sender) == 0, "You were sacrificed in a Dark Ritual!");
+        require(balanceOf(_user) == 0, "You were sacrificed in a Dark Ritual!");
 
         // store the current token counter
         uint256 tokenId = _tokenIdCounter.current();
 
         // log the initiation data
-        emit Initiation(msg.sender, tokenId, minimumStake);
+        emit Initiation(_user, msg.sender, tokenId, minimumStake);
 
         // increment the token counter
         _tokenIdCounter.increment();
 
         // mint the user's soul bound initiation token
-        _safeMint(msg.sender, tokenId);
+        _safeMint(_user, tokenId);
     }
 
     /**
