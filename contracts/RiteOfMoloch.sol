@@ -68,7 +68,7 @@ contract RiteOfMoloch is ERC721, AccessControl {
     MolochDAO internal _dao;
     Token internal _token;
 
-    address[] allInitiates;
+    address[] public allInitiates;
 
     // minimum amount of dao shares required to be considered a member
     uint256 internal _minimumShare;
@@ -223,6 +223,9 @@ contract RiteOfMoloch is ERC721, AccessControl {
 
         // add the initiate's address to the tracking array
         allInitiates.push(_user);
+        
+        //add initiates start time to startTime mapping
+        initiationStart[_user] = block.timestamp;
 
         return _token.transferFrom(msg.sender, address(this), minimumStake);
     }

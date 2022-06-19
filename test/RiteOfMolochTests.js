@@ -135,7 +135,7 @@ describe("Rite of Moloch Contract", function () {
     });
 
     //can't get joininitiation to revert
-    it("should NOT join the initiation", async function () {
+    it("should NOT be able to re-join the initiation the initiation", async function () {
       //join initiation
       const tx = await riteOfMoloch.joinInitiation(member);
       await tx.wait();
@@ -144,5 +144,28 @@ describe("Rite of Moloch Contract", function () {
         "You were sacrificed in a Dark Ritual!"
       );
     });
+
+    //crashes with "Error: VM Exception while processing transaction: reverted with panic code 0x32 (Array accessed at an out-of-bounds or negative index)" when getSacrifices is called.
+    // it("should get all the failed initiates", async function () {
+    //   console.log(addrs.length)
+    //   //populate the all initiates array
+    //     for(let address of addrs){
+    //       console.log(address.address)
+    //      const tx = await riteOfMoloch.joinInitiation(address.address);
+    //      await tx.wait();
+    //     }
+
+    //   //set maximum time to 1
+    //     const maxTime = await riteOfMoloch.setMaxDuration(1);
+    //     await maxTime.wait();
+    //     const newTime = await riteOfMoloch.maximumTime();
+    //     console.log("new time", newTime);
+
+    //     const initiateStart = await riteOfMoloch.initiationStart(addrs[1].address)
+    //     console.log(initiateStart);
+    //   //get all sacrifices
+    //   const sacrifices = await riteOfMoloch.getSacrifices();
+    //   console.log(sacrifices);
+    // });
   });
 });
