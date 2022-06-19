@@ -69,16 +69,17 @@ describe("Rite of Moloch Contract", function () {
     it("Should set the correct OPERATOR", async function () {
       //convert role string to 32byte keccak hash
       const OPERATOR = ethers.utils.id("OPERATOR");
-     //check if contract deployer has been assigned that role
+      //check if contract deployer has been assigned that role
       expect(await riteOfMoloch.hasRole(OPERATOR, owner.address)).to.equal(
         true
       );
     });
   });
 
-  describe("admin and operator only functions", function () {
-    it("should not be able to change minimum stake", async function () {
-        //check if non admin can call admin function
+  describe("Admin and Operator only functions", function () {
+
+    it("should Not be able to change minimum stake", async function () {
+      //check if non admin can call admin function
       await expect(
         riteOfMoloch.connect(addr1).setMinimumStake(11)
       ).to.be.revertedWith(
@@ -96,9 +97,30 @@ describe("Rite of Moloch Contract", function () {
       //check to see if staking amount has changed
       expect(Number(stake)).to.equal(11);
     });
+
+    it("should be able to change the max time", async function () {
+      // set max duration with owner acct
+      const tx = await riteOfMoloch.setMaxDuration(1000000000);
+      //wait for tx to be mined
+      await tx.wait();
+      //check max time
+      const maxDuration = await riteOfMoloch.maximumTime();
+      //check to make sure max time has been changed
+      expect(maxDuration.toString()).to.equal("1000000000");
+    });
+
+    it("should NOT be able to change the max time", async function () {
+      //make sure max duration cannot be changed by non admin acct
+      await expect(
+        riteOfMoloch.connect(addr2).setMaxDuration(1000000000)
+      ).to.be.revertedWith(
+        "AccessControl: account 0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc is missing role 0x523a704056dcd17bcf83bed8b68c59416dac1119be77755efe3bde0a64e46e0c"
+      );
+    });
   });
 
   describe("Initiate Rites", function () {
+
     it("should join the initiation", async function () {
       //call joinInitiation with what should be a member of the s3Cohort dao included in the constructor
       const join = await riteOfMoloch.joinInitiation(member);
@@ -114,8 +136,10 @@ describe("Rite of Moloch Contract", function () {
 
     //can't get joininitiation to revert
     it("should NOT join the initiation", async function () {
+      //join initiation
       const tx = await riteOfMoloch.joinInitiation(member);
-      const promise = await tx.wait();
+      await tx.wait();
+      //make sure you cannot re-join the initiation with the same address.
       await expect(riteOfMoloch.joinInitiation(member)).to.be.revertedWith(
         "You were sacrificed in a Dark Ritual!"
       );
