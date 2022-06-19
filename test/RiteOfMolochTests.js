@@ -113,10 +113,12 @@ describe("Rite of Moloch Contract", function () {
     });
 
     //can't get joininitiation to revert
-    // it("should NOT join the initiation", async function () {
-    //   await expect(riteOfMoloch.joinInitiation(member)).to.be.revertedWith(
-    //     "Already joined the initiation!"
-    //   );
-    // });
+    it("should NOT join the initiation", async function () {
+      const tx = await riteOfMoloch.joinInitiation(member);
+      const promise = await tx.wait();
+      await expect(riteOfMoloch.joinInitiation(member)).to.be.revertedWith(
+        "You were sacrificed in a Dark Ritual!"
+      );
+    });
   });
 });
