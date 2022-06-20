@@ -145,6 +145,9 @@ contract RiteOfMoloch is ERC721, AccessControl {
         // issue a soul bound token
         _soulBind(user);
 
+         //add initiates start time to startTime mapping
+        initiationStart[user] = block.timestamp;
+
     }
 
     /**
@@ -224,9 +227,6 @@ contract RiteOfMoloch is ERC721, AccessControl {
         // add the initiate's address to the tracking array
         allInitiates.push(_user);
         
-        //add initiates start time to startTime mapping
-        initiationStart[_user] = block.timestamp;
-
         return _token.transferFrom(msg.sender, address(this), minimumStake);
     }
 
