@@ -77,7 +77,6 @@ describe("Rite of Moloch Contract", function () {
   });
 
   describe("Admin and Operator only functions", function () {
-
     it("should Not be able to change minimum stake", async function () {
       //check if non admin can call admin function
       await expect(
@@ -120,7 +119,6 @@ describe("Rite of Moloch Contract", function () {
   });
 
   describe("Initiate Rites", function () {
-
     it("should join the initiation", async function () {
       //call joinInitiation with what should be a member of the s3Cohort dao included in the constructor
       const join = await riteOfMoloch.joinInitiation(member);
@@ -146,26 +144,28 @@ describe("Rite of Moloch Contract", function () {
     });
 
     //crashes with "Error: VM Exception while processing transaction: reverted with panic code 0x32 (Array accessed at an out-of-bounds or negative index)" when getSacrifices is called.
-    // it("should get all the failed initiates", async function () {
-    //   console.log(addrs.length)
-    //   //populate the all initiates array
-    //     for(let address of addrs){
-    //       console.log(address.address)
-    //      const tx = await riteOfMoloch.joinInitiation(address.address);
-    //      await tx.wait();
-    //     }
+    it("should get all the failed initiates", async function () {
+      console.log(addrs.length);
+      //populate the all initiates array
+      for (let address of addrs) {
+        console.log(address.address);
+        const tx = await riteOfMoloch.joinInitiation(address.address);
+        await tx.wait();
+      }
 
-    //   //set maximum time to 1
-    //     const maxTime = await riteOfMoloch.setMaxDuration(1);
-    //     await maxTime.wait();
-    //     const newTime = await riteOfMoloch.maximumTime();
-    //     console.log("new time", newTime);
+      //set maximum time to 1
+      const maxTime = await riteOfMoloch.setMaxDuration(1);
+      await maxTime.wait();
+      const newTime = await riteOfMoloch.maximumTime();
+      console.log("new time", newTime);
 
-    //     const initiateStart = await riteOfMoloch.initiationStart(addrs[1].address)
-    //     console.log(initiateStart);
-    //   //get all sacrifices
-    //   const sacrifices = await riteOfMoloch.getSacrifices();
-    //   console.log(sacrifices);
-    // });
+      const initiateStart = await riteOfMoloch.initiationStart(
+        addrs[1].address
+      );
+      console.log(initiateStart);
+      //get all sacrifices
+      const sacrifices = await riteOfMoloch.getSacrifices();
+      console.log(sacrifices);
+    });
   });
 });
