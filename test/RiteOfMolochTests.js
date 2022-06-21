@@ -133,7 +133,7 @@ describe("Rite of Moloch Contract", function () {
     });
 
     //can't get join initiation to revert
-    it("should NOT be able to re-join the initiation the initiation", async function () {
+    it("should NOT be able to re-join the initiation", async function () {
       //join initiation
       const tx = await riteOfMoloch.joinInitiation(member);
       await tx.wait();
@@ -143,13 +143,10 @@ describe("Rite of Moloch Contract", function () {
       );
     });
 
-
-    //crashes with "Error: VM Exception while processing transaction: reverted with panic code 0x32 (Array accessed at an out-of-bounds or negative index)" when getSacrifices is called.
+    // crashes with "Error: VM Exception while processing transaction: reverted with panic code 0x32 (Array accessed at an out-of-bounds or negative index)" when getSacrifices is called.
     it("should get all the failed initiates", async function () {
-      console.log(addrs.length);
       //populate the all initiates array
       for (let address of addrs) {
-        console.log(address.address);
         const tx = await riteOfMoloch.joinInitiation(address.address);
         await tx.wait();
       }
@@ -157,40 +154,71 @@ describe("Rite of Moloch Contract", function () {
       //set maximum time to 1
       const maxTime = await riteOfMoloch.setMaxDuration(1);
       await maxTime.wait();
-      const newTime = await riteOfMoloch.maximumTime();
-      console.log("new time", newTime);
 
-      const initiateStart = await riteOfMoloch.initiationStart(
-        addrs[1].address
-      );
-      console.log(initiateStart);
       //get all sacrifices
       const sacrifices = await riteOfMoloch.getSacrifices();
-      console.log(sacrifices);
+      //check length of sacrifices array.
+      expect(
+        sacrifices.failedInitiates.length && sacrifices.indices.length
+      ).to.equal(addrs.length);
+    });
 
-    // crashes with "Error: VM Exception while processing transaction: reverted with panic code 0x32 (Array accessed at an out-of-bounds or negative index)" when getSacrifices is called.
-    it("should get all the failed initiates", async function () {
-      console.log(addrs.length)
+    it("should claim stake of all failed initiates", async function () {
       //populate the all initiates array
-        for(let address of addrs){
-          console.log(address.address)
-         const tx = await riteOfMoloch.joinInitiation(address.address);
-         await tx.wait();
-        }
+      for (let address of addrs) {
+        const tx = await riteOfMoloch.joinInitiation(address.address);
+        await tx.wait();
+      }
 
       //set maximum time to 1
-        const maxTime = await riteOfMoloch.setMaxDuration(1);
-        await maxTime.wait();
-        const newTime = await riteOfMoloch.maximumTime();
-        console.log("new time", newTime);
+      const maxTime = await riteOfMoloch.setMaxDuration(1);
+      await maxTime.wait();
 
-        const initiateStart = await riteOfMoloch.initiationStart(addrs[1].address)
-        console.log(initiateStart);
       //get all sacrifices
       const sacrifices = await riteOfMoloch.getSacrifices();
-      console.log(sacrifices);
 
+      //impersonate member acount
+      await hre.network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [member],
+      });
+      const sacrificeMember = await ethers.getSigner(member);
 
+      //call sacrifice from impersonated member account
+      const sacrifice = await riteOfMoloch
+        .connect(sacrificeMember)
+        .sacrifice(sacrifices.failedInitiates, sacrifices.indices);
+      const promise = await sacrifice.wait();
+
+      //filter emitted events for "sacrifice" event
+      const eventArray = promise.events.filter((e) => {
+        return e.event == "Sacrifice";
+      });
+
+      //check that number of sacrifices is equal to the number of failed initiates.
+      expect(eventArray.length).to.equal(addrs.length);
+    });
+
+    it("should NOT be able claim stake of all failed initiates from non member account", async function () {
+      //populate the all initiates array
+      for (let address of addrs) {
+        const tx = await riteOfMoloch.joinInitiation(address.address);
+        await tx.wait();
+      }
+
+      //set maximum time to 1
+      const maxTime = await riteOfMoloch.setMaxDuration(1);
+      await maxTime.wait();
+
+      //get all sacrifices
+      const sacrifices = await riteOfMoloch.getSacrifices();
+
+      //check that sacrifice is reverted when called by a non member;
+      await expect(
+        riteOfMoloch
+          .connect(addr2)
+          .sacrifice(sacrifices.failedInitiates, sacrifices.indices)
+      ).to.be.revertedWith("You must be a member!");
     });
   });
 });
