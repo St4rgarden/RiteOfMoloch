@@ -88,10 +88,10 @@ describe("Rite of Moloch Contract", function () {
 
     it("should be able to change minimum stake", async function () {
       //change min stake with admin account
-      const tx = await riteOfMoloch.connect(owner).setMinimumStake(11);
+      await riteOfMoloch.connect(owner).setMinimumStake(11);
       //wait for tx to be mined
-      await tx.wait();
-      //retreive new staking amount
+      // await tx.wait();
+      //retrieve new staking amount
       const stake = await riteOfMoloch.minimumStake();
       //check to see if staking amount has changed
       expect(Number(stake)).to.equal(11);
@@ -99,9 +99,9 @@ describe("Rite of Moloch Contract", function () {
 
     it("should be able to change the max time", async function () {
       // set max duration with owner acct
-      const tx = await riteOfMoloch.setMaxDuration(1000000000);
+      await riteOfMoloch.setMaxDuration(1000000000);
       //wait for tx to be mined
-      await tx.wait();
+      // await tx.wait();
       //check max time
       const maxDuration = await riteOfMoloch.maximumTime();
       //check to make sure max time has been changed
@@ -128,11 +128,11 @@ describe("Rite of Moloch Contract", function () {
       const event = receipt.events.filter((e) => {
         return e.event == "Initiation";
       });
-      //check if member is listed in emmitted initiation event
+      //check if member is listed in emitted initiation event
       expect(event[0].args.newInitiate.toLowerCase()).to.equal(member);
     });
 
-    //can't get joininitiation to revert
+    //can't get join initiation to revert
     it("should NOT be able to re-join the initiation the initiation", async function () {
       //join initiation
       const tx = await riteOfMoloch.joinInitiation(member);
@@ -142,6 +142,7 @@ describe("Rite of Moloch Contract", function () {
         "You were sacrificed in a Dark Ritual!"
       );
     });
+
 
     //crashes with "Error: VM Exception while processing transaction: reverted with panic code 0x32 (Array accessed at an out-of-bounds or negative index)" when getSacrifices is called.
     it("should get all the failed initiates", async function () {
@@ -166,6 +167,30 @@ describe("Rite of Moloch Contract", function () {
       //get all sacrifices
       const sacrifices = await riteOfMoloch.getSacrifices();
       console.log(sacrifices);
+
+    // crashes with "Error: VM Exception while processing transaction: reverted with panic code 0x32 (Array accessed at an out-of-bounds or negative index)" when getSacrifices is called.
+    it("should get all the failed initiates", async function () {
+      console.log(addrs.length)
+      //populate the all initiates array
+        for(let address of addrs){
+          console.log(address.address)
+         const tx = await riteOfMoloch.joinInitiation(address.address);
+         await tx.wait();
+        }
+
+      //set maximum time to 1
+        const maxTime = await riteOfMoloch.setMaxDuration(1);
+        await maxTime.wait();
+        const newTime = await riteOfMoloch.maximumTime();
+        console.log("new time", newTime);
+
+        const initiateStart = await riteOfMoloch.initiationStart(addrs[1].address)
+        console.log(initiateStart);
+      //get all sacrifices
+      const sacrifices = await riteOfMoloch.getSacrifices();
+      console.log(sacrifices);
+
+
     });
   });
 });

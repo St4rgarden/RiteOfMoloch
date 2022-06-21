@@ -357,32 +357,40 @@ contract RiteOfMoloch is ERC721, AccessControl {
     */
     function getSacrifices() public view returns (address[] memory failedInitiates, uint256[] memory indices) {
 
-        // an array to store our potential sacrifices
-        address[] memory sacrifices;
-
-        // the indices that correspond to each sacrifice
-        uint256[] memory sacrificeIndices;
-
-        // increment each time we find a proper sacrifice
-        uint256 count;
+        uint256 length;
 
         for (uint256 i = 0; i < allInitiates.length; ++i) {
 
-            // access each initiate's start time
             uint256 startTime = initiationStart[allInitiates[i]];
 
-            // calculate the time an initiate has been in the cohort
             uint256 duration = block.timestamp - startTime;
 
             if (duration >= maximumTime) {
 
-                // add the failed initiate address to the sacrifice array
+                length += 1;
+
+            }
+
+        }
+
+        address[] memory sacrifices = new address[](length);
+
+        uint256[] memory sacrificeIndices = new uint256[](length);
+
+        uint256 count;
+
+        for (uint256 i = 0; i < allInitiates.length; ++i) {
+
+            uint256 startTime = initiationStart[allInitiates[i]];
+
+            uint256 duration = block.timestamp - startTime;
+
+            if (duration >= maximumTime) {
+
                 sacrifices[count] = allInitiates[i];
 
-                // add their indice
                 sacrificeIndices[count] = i;
 
-                // increment our counter
                 count += 1;
 
             }
