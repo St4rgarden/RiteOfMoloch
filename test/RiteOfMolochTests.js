@@ -57,7 +57,7 @@ describe("Rite of Moloch Contract", function () {
     "function approve(address spender, uint256 amount) returns (bool)",
   ];
   /** UTILITY FUNCTIONS */
-  //fenction to impersonate an account and send an amount to a specified wallet amount needs to be a string denoted in wei.
+  //function to impersonate an account and send an amount to a specified wallet amount needs to be a string denoted in wei.
   async function impersonateAndTransfer(
     fromWalletAddress,
     toWalletAddress,
@@ -70,7 +70,7 @@ describe("Rite of Moloch Contract", function () {
     });
 
     const whale = await ethers.getSigner(fromWalletAddress);
-    //tranfer raid to member address
+    //transfer raid to member address
     const tx = await raidTokenContract
       .connect(whale)
       .transfer(toWalletAddress, amount);
@@ -81,13 +81,14 @@ describe("Rite of Moloch Contract", function () {
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
   beforeEach(async function () {
+
     provider = ethers.provider;
     // Get the ContractFactory and Signers here.
     RiteOfMoloch = await ethers.getContractFactory("RiteOfMoloch");
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
 
     // To deploy our contract, we just have to call Token.deploy() and await
-    // for it to be deployed(), which happens onces its transaction has been
+    // for it to be deployed(), which happens once its transaction has been
     // mined.
     riteOfMoloch = await RiteOfMoloch.connect(owner).deploy(
       s3DaoAddress,
@@ -108,6 +109,7 @@ describe("Rite of Moloch Contract", function () {
 
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
+
     it("Should set the right ADMIN", async function () {
       //convert role string to 32byte keccak hash
       const ADMIN = ethers.utils.id("ADMIN");
@@ -116,6 +118,7 @@ describe("Rite of Moloch Contract", function () {
     });
 
     it("Should set the correct OPERATOR", async function () {
+
       //convert role string to 32byte keccak hash
       const OPERATOR = ethers.utils.id("OPERATOR");
       //check if contract deployer has been assigned that role
@@ -127,6 +130,7 @@ describe("Rite of Moloch Contract", function () {
 
   describe("Admin and Operator only functions", function () {
     it("should Not be able to change minimum stake", async function () {
+
       //check if non admin can call admin function
       await expect(
         riteOfMoloch.connect(addr1).setMinimumStake(11)
@@ -136,6 +140,7 @@ describe("Rite of Moloch Contract", function () {
     });
 
     it("should be able to change minimum stake", async function () {
+
       //change min stake with admin account
       await riteOfMoloch.connect(owner).setMinimumStake(11);
       //wait for tx to be mined
@@ -147,6 +152,7 @@ describe("Rite of Moloch Contract", function () {
     });
 
     it("should be able to change the max time", async function () {
+
       const newMaxtime = 1000000000;
       // set new max duration with owner acct
       await riteOfMoloch.setMaxDuration(newMaxtime);
@@ -159,6 +165,7 @@ describe("Rite of Moloch Contract", function () {
     });
 
     it("should NOT be able to change the max time", async function () {
+
       //make sure max duration cannot be changed by non admin acct
       await expect(
         riteOfMoloch.connect(addr2).setMaxDuration(1000000000)
@@ -169,12 +176,14 @@ describe("Rite of Moloch Contract", function () {
   });
 
   describe("Initiate Rites", function () {
+
     it("should join the initiation", async function () {
+
       //get initial raid balance of contract
       const initialBalance = await raidTokenContract.balanceOf(
         riteOfMoloch.address
       );
-      //get amount of raid to be transfered to member wallet for initiations.
+      //get amount of raid to be transferred to member wallet for initiations.
       const raidAmount = ethers.utils.parseEther("100000");
       //impersonate whale and send some raid to specified address.
       impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
@@ -186,7 +195,7 @@ describe("Rite of Moloch Contract", function () {
       const join = await riteOfMoloch.joinInitiation(member);
       //wait for tx to be mined
       const receipt = await join.wait();
-      //filter for event emmission
+      //filter for event emission
       const event = receipt.events.filter((e) => {
         return e.event == "Initiation";
       });
@@ -196,13 +205,14 @@ describe("Rite of Moloch Contract", function () {
       );
       //check if member is listed in emitted initiation event
       expect(event[0].args.newInitiate.toLowerCase()).to.equal(member);
-      //check that correct amount of raid was transfered.
+      //check that correct amount of raid was transferred.
       expect(endingBalance.sub(initialBalance)).to.equal(minimumStakeAmount);
     });
 
     //
     it("should NOT be able to re-join the initiation", async function () {
-      //get amount of raid to be transfered to member wallet for initiations.
+
+      //get amount of raid to be transferred to member wallet for initiations.
       const raidAmount = ethers.utils.parseEther("100000");
       //impersonate whale and send some raid to specified address.
       impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
@@ -219,7 +229,8 @@ describe("Rite of Moloch Contract", function () {
     });
 
     it("should get all the failed initiates", async function () {
-      //get amount of raid to be transfered to member wallet for initiations.
+
+      //get amount of raid to be transferred to member wallet for initiations.
       const raidAmount = ethers.utils.parseEther("100000");
       //impersonate whale and send some raid to specified address.
       impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
@@ -249,29 +260,32 @@ describe("Rite of Moloch Contract", function () {
     });
 
     it("should sacrifice all failed initiates", async function () {
-      //get amount of raid to be transfered to member wallet for initiations.
+
+      //get amount of raid to be transferred to member wallet for initiations.
       const raidAmount = ethers.utils.parseEther("100000");
       //impersonate whale and send some raid to specified address.
       impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
+      //calculate the total approval amount
+      const approvalAmount = ethers.utils.parseEther((10 * addrs.length).toString());
+      //approve the total number of tokens
+      await raidTokenContract
+          .connect(owner)
+          .approve(riteOfMoloch.address, approvalAmount);
+      //set maximum time to 1
+      const maxTime = await riteOfMoloch.setMaxDuration(1);
+      await maxTime.wait();
+
       //populate the all initiates array
       for (let address of addrs) {
-
-        await raidTokenContract
-          .connect(owner)
-          .approve(riteOfMoloch.address, minimumStakeAmount);
 
         const tx = await riteOfMoloch.joinInitiation(address.address);
         await tx.wait();
       }
 
-      //set maximum time to 1
-      const maxTime = await riteOfMoloch.setMaxDuration(1);
-      await maxTime.wait();
-
       //get all sacrifices
       const sacrifices = await riteOfMoloch.getSacrifices();
 
-      //impersonate member acount
+      //impersonate member account
       await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [member],
@@ -308,7 +322,7 @@ describe("Rite of Moloch Contract", function () {
       //get all sacrifices
       const sacrifices = await riteOfMoloch.getSacrifices();
 
-      //check that sacrifice is reverted when called by a non member;
+      //check that sacrifice is reverted when called by a nonmember;
       await expect(
         riteOfMoloch
           .connect(addr2)
