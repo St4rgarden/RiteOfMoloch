@@ -218,16 +218,20 @@ describe("Rite of Moloch Contract", function () {
       );
     });
 
-    // crashes with "Error: VM Exception while processing transaction: reverted with panic code 0x32 (Array accessed at an out-of-bounds or negative index)" when getSacrifices is called.
     it("should get all the failed initiates", async function () {
-       //impersonate whale and send some raid to specified address.
-       impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
-       //approve contract to spend raid.
-       await raidTokenContract
-         .connect(owner)
-         .approve(riteOfMoloch.address, minimumStakeAmount.mul(addrs.length));
+      //get amount of raid to be transfered to member wallet for initiations.
+      const raidAmount = ethers.utils.parseEther("100000");
+      //impersonate whale and send some raid to specified address.
+      impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
+      //approve contract to spend raid.
+      await raidTokenContract
+        .connect(owner)
+        .approve(riteOfMoloch.address, minimumStakeAmount.mul(addrs.length));
       //populate the all initiates array
       for (let address of addrs) {
+        await raidTokenContract
+          .connect(owner)
+          .approve(riteOfMoloch.address, minimumStakeAmount);
         const tx = await riteOfMoloch.joinInitiation(address.address);
         await tx.wait();
       }
@@ -244,10 +248,18 @@ describe("Rite of Moloch Contract", function () {
       ).to.equal(addrs.length);
     });
 
-    it("should claim stake of all failed initiates", async function () {
-      impersonateAndTransfer(whaleWallet,)
+    it("should sacrifice all failed initiates", async function () {
+      //get amount of raid to be transfered to member wallet for initiations.
+      const raidAmount = ethers.utils.parseEther("100000");
+      //impersonate whale and send some raid to specified address.
+      impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
       //populate the all initiates array
       for (let address of addrs) {
+
+        await raidTokenContract
+          .connect(owner)
+          .approve(riteOfMoloch.address, minimumStakeAmount);
+
         const tx = await riteOfMoloch.joinInitiation(address.address);
         await tx.wait();
       }
@@ -264,6 +276,7 @@ describe("Rite of Moloch Contract", function () {
         method: "hardhat_impersonateAccount",
         params: [member],
       });
+      
       const sacrificeMember = await ethers.getSigner(member);
 
       //call sacrifice from impersonated member account
