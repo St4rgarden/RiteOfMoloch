@@ -82,7 +82,8 @@ contract RiteOfMoloch is ERC721, AccessControl {
     // DAO treasury address
     address treasury;
 
-    constructor(address daoAddress, address tokenAddress, uint256 shareThreshold) ERC721("Rite of Moloch", "RITE") {
+    constructor(address daoAddress, address tokenAddress, uint256 shareThreshold, uint256 minStake)
+    ERC721("Rite of Moloch", "RITE") {
 
         // Set the interface for accessing the DAO's public members mapping
         _dao = MolochDAO(daoAddress);
@@ -103,6 +104,9 @@ contract RiteOfMoloch is ERC721, AccessControl {
 
         // setup the ADMIN role to manage the OPERATOR role
         _setRoleAdmin(OPERATOR, ADMIN);
+
+        // set the minimum stake requirement
+        setMinimumStake(minStake);
 
     }
 
@@ -170,6 +174,9 @@ contract RiteOfMoloch is ERC721, AccessControl {
     * @param newMinimumStake the minimum quantity of tokens a user must stake to join the cohort
     */
     function setMinimumStake(uint256 newMinimumStake) public onlyRole(ADMIN) {
+
+        // enforce that the minimum stake isn't zero
+        require(newMinimumStake > 0, "Minimum stake must be greater than zero!");
 
         // set the minimum staking requirement
         minimumStake = newMinimumStake;
