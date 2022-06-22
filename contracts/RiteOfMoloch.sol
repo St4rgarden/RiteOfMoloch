@@ -357,8 +357,10 @@ contract RiteOfMoloch is ERC721, AccessControl {
     */
     function getSacrifices() public view returns (address[] memory failedInitiates, uint256[] memory indices) {
 
+        // variable for sizing our static arrays
         uint256 length;
 
+        // count the number of failed initiates
         for (uint256 i = 0; i < allInitiates.length; ++i) {
 
             uint256 startTime = initiationStart[allInitiates[i]];
@@ -373,10 +375,12 @@ contract RiteOfMoloch is ERC721, AccessControl {
 
         }
 
+        // size our static arrays based on our count
         address[] memory sacrifices = new address[](length);
 
         uint256[] memory sacrificeIndices = new uint256[](length);
 
+        // variable for tracking our array index
         uint256 count;
 
         for (uint256 i = 0; i < allInitiates.length; ++i) {
