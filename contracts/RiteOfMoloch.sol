@@ -431,6 +431,4 @@ contract RiteOfMoloch is ERC721, AccessControl {
         return super.supportsInterface(interfaceId);
     }
 
-    receive() external payable {}
-
 }
