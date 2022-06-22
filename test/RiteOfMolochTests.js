@@ -28,18 +28,60 @@ describe("Rite of Moloch Contract", function () {
 
   let RiteOfMoloch;
   let riteOfMoloch;
+  let raidTokenContract;
+  let provider;
   let owner;
   let addr1;
   let addr2;
   let addrs;
   const s3DaoAddress = "0x7bde8f8a3d59b42d0d8fab3a46e9f42e8e3c2de8";
   const raidTokenAddress = "0x18e9262e68cc6c6004db93105cc7c001bb103e49";
-  const shareThreshold = 10;
   const member = "0xdf1064632754674acb1b804f2c65849d016eaf9d";
+  const whaleWallet = "0x1e9c89aFf77215F3AD26bFfe0C50d4FdEBa6a352";
+  const shareThreshold = 10;
+  const minimumStakeAmount = ethers.utils.parseEther("10");
+  const raidABI = [
+    // Some details about the token
+    "function name() view returns (string)",
+    "function symbol() view returns (string)",
+
+    // Get the account balance
+    "function balanceOf(address) view returns (uint)",
+
+    // Send some of your tokens to someone else
+    "function transfer(address to, uint amount)",
+
+    // An event triggered whenever anyone transfers to someone else
+    "event Transfer(address indexed from, address indexed to, uint amount)",
+    //approve spender to spend an amount of a certain token.
+    "function approve(address spender, uint256 amount) returns (bool)",
+  ];
+  /** UTILITY FUNCTIONS */
+  //fenction to impersonate an account and send an amount to a specified wallet amount needs to be a string denoted in wei.
+  async function impersonateAndTransfer(
+    fromWalletAddress,
+    toWalletAddress,
+    amount
+  ) {
+    //impersonate raid "whale". 0x57a8865cfB1eCEf7253c27da6B4BC3dAEE5Be518
+    await hre.network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [fromWalletAddress],
+    });
+
+    const whale = await ethers.getSigner(fromWalletAddress);
+    //tranfer raid to member address
+    const tx = await raidTokenContract
+      .connect(whale)
+      .transfer(toWalletAddress, amount);
+
+    await tx.wait();
+  }
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
   beforeEach(async function () {
+    provider = ethers.provider;
     // Get the ContractFactory and Signers here.
     RiteOfMoloch = await ethers.getContractFactory("RiteOfMoloch");
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
@@ -55,6 +97,12 @@ describe("Rite of Moloch Contract", function () {
 
     // We can interact with the contract by calling `riteOfMoloch.method()`
     await riteOfMoloch.deployed();
+
+    raidTokenContract = new ethers.Contract(
+      raidTokenAddress,
+      raidABI,
+      provider
+    );
   });
 
   // You can nest describe calls to create subsections.
@@ -98,14 +146,15 @@ describe("Rite of Moloch Contract", function () {
     });
 
     it("should be able to change the max time", async function () {
-      // set max duration with owner acct
-      await riteOfMoloch.setMaxDuration(1000000000);
+      const newMaxtime = 1000000000;
+      // set new max duration with owner acct
+      await riteOfMoloch.setMaxDuration(newMaxtime);
       //wait for tx to be mined
       // await tx.wait();
       //check max time
       const maxDuration = await riteOfMoloch.maximumTime();
       //check to make sure max time has been changed
-      expect(maxDuration.toString()).to.equal("1000000000");
+      expect(maxDuration.toString()).to.equal(newMaxtime.toString());
     });
 
     it("should NOT be able to change the max time", async function () {
@@ -120,6 +169,18 @@ describe("Rite of Moloch Contract", function () {
 
   describe("Initiate Rites", function () {
     it("should join the initiation", async function () {
+      //get initial raid balance of contract
+      const initialBalance = await raidTokenContract.balanceOf(
+        riteOfMoloch.address
+      );
+      //get amount of raid to be transfered to member wallet for initiations.
+      const raidAmount = ethers.utils.parseEther("100000");
+      //impersonate whale and send some raid to specified address.
+      impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
+      //approve contract to spend raid.
+      await raidTokenContract
+        .connect(owner)
+        .approve(riteOfMoloch.address, minimumStakeAmount);
       //call joinInitiation with what should be a member of the s3Cohort dao included in the constructor
       const join = await riteOfMoloch.joinInitiation(member);
       //wait for tx to be mined
@@ -128,23 +189,42 @@ describe("Rite of Moloch Contract", function () {
       const event = receipt.events.filter((e) => {
         return e.event == "Initiation";
       });
+
+      const endingBalance = await raidTokenContract.balanceOf(
+        riteOfMoloch.address
+      );
       //check if member is listed in emitted initiation event
       expect(event[0].args.newInitiate.toLowerCase()).to.equal(member);
+      //check that correct amount of raid was transfered.
+      expect(endingBalance.sub(initialBalance)).to.equal(minimumStakeAmount);
     });
 
-    //can't get join initiation to revert
+    //
     it("should NOT be able to re-join the initiation", async function () {
+      //get amount of raid to be transfered to member wallet for initiations.
+      const raidAmount = ethers.utils.parseEther("100000");
+      //impersonate whale and send some raid to specified address.
+      impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
+      //approve contract to spend raid.
+      await raidTokenContract
+        .connect(owner)
+        .approve(riteOfMoloch.address, minimumStakeAmount);
       //join initiation
       const tx = await riteOfMoloch.joinInitiation(member);
-      await tx.wait();
       //make sure you cannot re-join the initiation with the same address.
       await expect(riteOfMoloch.joinInitiation(member)).to.be.revertedWith(
-        "You were sacrificed in a Dark Ritual!"
+        "Already joined the initiation!"
       );
     });
 
     // crashes with "Error: VM Exception while processing transaction: reverted with panic code 0x32 (Array accessed at an out-of-bounds or negative index)" when getSacrifices is called.
     it("should get all the failed initiates", async function () {
+       //impersonate whale and send some raid to specified address.
+       impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
+       //approve contract to spend raid.
+       await raidTokenContract
+         .connect(owner)
+         .approve(riteOfMoloch.address, minimumStakeAmount.mul(addrs.length));
       //populate the all initiates array
       for (let address of addrs) {
         const tx = await riteOfMoloch.joinInitiation(address.address);
@@ -164,6 +244,7 @@ describe("Rite of Moloch Contract", function () {
     });
 
     it("should claim stake of all failed initiates", async function () {
+      impersonateAndTransfer(whaleWallet,)
       //populate the all initiates array
       for (let address of addrs) {
         const tx = await riteOfMoloch.joinInitiation(address.address);
