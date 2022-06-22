@@ -92,7 +92,8 @@ describe("Rite of Moloch Contract", function () {
     riteOfMoloch = await RiteOfMoloch.connect(owner).deploy(
       s3DaoAddress,
       raidTokenAddress,
-      shareThreshold
+      shareThreshold,
+      minimumStakeAmount
     );
 
     // We can interact with the contract by calling `riteOfMoloch.method()`
