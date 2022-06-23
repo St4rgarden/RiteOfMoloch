@@ -238,6 +238,33 @@ describe("Rite of Moloch Contract", function () {
         sacrifices.failedInitiates.length && sacrifices.indices.length
       ).to.equal(addrs.length + 1);
     });
+    it("Should be able to claim member accounts staked raid", async function(){
+      //set minimum stake back to 10
+      await riteOfMoloch.setMinimumStake(10);
+       //impersonate member account
+       await hre.network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [member],
+      });
+
+      const sacrificeMember = await ethers.getSigner(member);
+      //check member accounts stake amount
+      const stakeAmount = await riteOfMoloch.connect(sacrificeMember).claimStake(0);
+      console.log(stakeAmount);
+    });
+
+    it("should NOT be able sacrifice failed initiates from non member account", async function () {
+
+      //get all sacrifices
+      const sacrifices = await riteOfMoloch.getSacrifices();
+
+      //check that sacrifice is reverted when called by a nonmember;
+      await expect(
+        riteOfMoloch
+          .connect(addr2)
+          .sacrifice(sacrifices.failedInitiates, sacrifices.indices)
+      ).to.be.revertedWith("You must be a member!");
+    });
 
     it("should sacrifice all failed initiates", async function () {
 
@@ -266,17 +293,6 @@ describe("Rite of Moloch Contract", function () {
       expect(eventArray.length).to.equal(addrs.length + 1);
     });
 
-    it("should NOT be able claim stake of all failed initiates from non member account", async function () {
-
-      //get all sacrifices
-      const sacrifices = await riteOfMoloch.getSacrifices();
-
-      //check that sacrifice is reverted when called by a nonmember;
-      await expect(
-        riteOfMoloch
-          .connect(addr2)
-          .sacrifice(sacrifices.failedInitiates, sacrifices.indices)
-      ).to.be.revertedWith("You must be a member!");
-    });
+   
   });
 });
