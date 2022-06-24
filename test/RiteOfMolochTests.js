@@ -115,6 +115,7 @@ describe("Rite of Moloch Contract", function () {
   describe("Deployment", function () {
 
     it("Should set the right ADMIN", async function () {
+
       //convert role string to 32byte keccak hash
       const ADMIN = ethers.utils.id("ADMIN");
       //check if contract deployer has been assigned that role
@@ -135,6 +136,7 @@ describe("Rite of Moloch Contract", function () {
   describe("Admin and Operator only functions", function () {
 
     it("should Not be able to change minimum stake", async function () {
+
       //check if non admin can call admin function
       await expect(
         riteOfMoloch.connect(addr1).setMinimumStake(11)
@@ -154,6 +156,7 @@ describe("Rite of Moloch Contract", function () {
     });
 
     it("should be able to change the max time", async function () {
+
       const newMaxTime = 1000000000;
       // set new max duration with owner acct
       await riteOfMoloch.setMaxDuration(newMaxTime);
@@ -164,6 +167,7 @@ describe("Rite of Moloch Contract", function () {
     });
 
     it("should NOT be able to change the max time", async function () {
+
       //make sure max duration cannot be changed by non admin acct
       await expect(
         riteOfMoloch.connect(addr2).setMaxDuration(1000000000)
@@ -175,7 +179,7 @@ describe("Rite of Moloch Contract", function () {
 
   describe("Initiate Rites", function () {
     it("should join the initiation", async function () {
-
+      
       //get initial raid balance of contract
       const initialBalance = await raidTokenContract.balanceOf(
         riteOfMoloch.address
@@ -238,19 +242,33 @@ describe("Rite of Moloch Contract", function () {
         sacrifices.failedInitiates.length && sacrifices.indices.length
       ).to.equal(addrs.length + 1);
     });
-    it("Should be able to claim member accounts staked raid", async function(){
-      //set minimum stake back to 10
-      await riteOfMoloch.setMinimumStake(10);
+
+    it("should be able to claim member account's staked raid", async function(){
+
+      // get minimum stake.
+      const minStake = await riteOfMoloch.minimumStake();
        //impersonate member account
        await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [member],
       });
-
       const sacrificeMember = await ethers.getSigner(member);
+      
       //check member accounts stake amount
       const stakeAmount = await riteOfMoloch.connect(sacrificeMember).claimStake(0);
-      console.log(stakeAmount);
+      const promise = await stakeAmount.wait()
+       //filter emitted events for "claim" event
+       const eventArray = promise.events.filter((e) => {
+        return e.event == "Claim";
+      });
+
+      expect(eventArray[0].args.claimAmount).to.equal(minStake);
+    });
+
+    it("should NOT be able to claim non-member account's staked raid", async function(){
+
+        //make sure claimStake is reverted.
+     await expect(riteOfMoloch.connect(addr1).claimStake(1)).to.be.revertedWith("You must be a member!");
     });
 
     it("should NOT be able sacrifice failed initiates from non member account", async function () {
@@ -270,7 +288,6 @@ describe("Rite of Moloch Contract", function () {
 
       //get all sacrifices
       const sacrifices = await riteOfMoloch.getSacrifices();
-
       //impersonate member account
       await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
