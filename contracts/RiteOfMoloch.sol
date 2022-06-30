@@ -50,6 +50,15 @@ contract RiteOfMoloch is ERC721, AccessControl {
     // logs data when a user successfully claims back their stake
     event Claim(address newMember, uint256 claimAmount);
 
+    // log the new staking requirement
+    event ChangedStake(uint256 newStake);
+
+    // log the new minimum shares for DAO membership
+    event ChangedShare(uint256 newShare);
+
+    // log the new duration before an initiate can be slashed
+    event ChangedTime(uint256 newTime);
+
     // initiation participant token balances
     mapping(address => uint256) private _staked;
 
@@ -71,7 +80,7 @@ contract RiteOfMoloch is ERC721, AccessControl {
     address[] public allInitiates;
 
     // minimum amount of dao shares required to be considered a member
-    uint256 internal _minimumShare;
+    uint256 public minimumShare;
 
     // minimum amount of staked tokens required to join the initiation
     uint256 public minimumStake;
@@ -80,7 +89,7 @@ contract RiteOfMoloch is ERC721, AccessControl {
     uint256 public maximumTime;
 
     // DAO treasury address
-    address treasury;
+    address public treasury;
 
     constructor(address daoAddress, address tokenAddress, uint256 shareThreshold, uint256 minStake)
     ERC721("Rite of Moloch", "RITE") {
@@ -95,7 +104,7 @@ contract RiteOfMoloch is ERC721, AccessControl {
         _token = Token(tokenAddress);
 
         // Set the minimum shares
-        _minimumShare = shareThreshold;
+        minimumShare = shareThreshold;
 
         // grant roles
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -181,6 +190,9 @@ contract RiteOfMoloch is ERC721, AccessControl {
         // set the minimum staking requirement
         minimumStake = newMinimumStake;
 
+        // emit new staking requirement data
+        emit ChangedStake(newMinimumStake);
+
     }
 
     /**
@@ -189,8 +201,14 @@ contract RiteOfMoloch is ERC721, AccessControl {
     */
     function setMaxDuration(uint256 newMaxTime) public onlyRole(OPERATOR) {
 
+        // enforce that the minimum time is greater than 1 week
+        require(newMaxTime > 7 days, "Minimum duration must be greater than 1 week!");
+
         // set the maximum length of time for initiations
         maximumTime = newMaxTime;
+
+        // log the new duration before stakes can be slashed
+        emit ChangedTime(newMaxTime);
 
     }
 
@@ -200,8 +218,14 @@ contract RiteOfMoloch is ERC721, AccessControl {
     */
     function setShareThreshold(uint256 newShareThreshold) public onlyRole(ADMIN) {
 
-        // set the maximum length of time for initiations
-        _minimumShare = newShareThreshold;
+        // enforce that the minimum share threshold isn't zero
+        require(newShareThreshold > 0, "Minimum shares must be greater than zero!");
+
+        // set the minimum number of DAO shares required to graduate
+        minimumShare = newShareThreshold;
+
+        // log data for the new minimum share threshold
+        emit ChangedShare(newShareThreshold);
 
     }
 
@@ -351,7 +375,7 @@ contract RiteOfMoloch is ERC721, AccessControl {
         uint256 shares = member.shares;
 
         // enforce that the user is a member
-        require(shares >= _minimumShare, "You must be a member!");
+        require(shares >= minimumShare, "You must be a member!");
     }
 
     /*************************

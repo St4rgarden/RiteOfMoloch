@@ -6,6 +6,13 @@
 // We import Chai to use its asserting functions here.
 const { expect } = require("chai");
 const { keccak256, defaultAbiCoder } = require("ethers/lib/utils");
+const {
+  BN,           // Big Number support
+  constants,    // Common constants, like the zero address and largest integers
+  expectEvent,  // Assertions for emitted events
+  expectRevert, // Assertions for transactions that should fail
+  time          // Manipulating block number, mining and timestamp
+} = require('@openzeppelin/test-helpers');
 const { ethers } = require("hardhat");
 require("dotenv").config();
 
@@ -135,7 +142,7 @@ describe("Rite of Moloch Contract", function () {
 
   describe("Admin and Operator only functions", function () {
 
-    it("should Not be able to change minimum stake", async function () {
+    it("Non-admin should NOT be able to change minimum stake", async function () {
 
       //check if non admin can call admin function
       await expect(
@@ -145,7 +152,7 @@ describe("Rite of Moloch Contract", function () {
       );
     });
 
-    it("should be able to change minimum stake", async function () {
+    it("Admin should be able to change minimum stake", async function () {
 
       //change min stake with admin account
       await riteOfMoloch.connect(owner).setMinimumStake(11);
@@ -155,7 +162,7 @@ describe("Rite of Moloch Contract", function () {
       expect(Number(stake)).to.equal(11);
     });
 
-    it("should be able to change the max time", async function () {
+    it("Operator should be able to change the max time", async function () {
 
       const newMaxTime = 1000000000;
       // set new max duration with owner acct
@@ -166,7 +173,7 @@ describe("Rite of Moloch Contract", function () {
       expect(maxDuration.toString()).to.equal(newMaxTime.toString());
     });
 
-    it("should NOT be able to change the max time", async function () {
+    it("Non operator should NOT be able to change the max time", async function () {
 
       //make sure max duration cannot be changed by non admin acct
       await expect(
