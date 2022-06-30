@@ -59,6 +59,9 @@ contract RiteOfMoloch is ERC721, AccessControl {
     // log the new duration before an initiate can be slashed
     event ChangedTime(uint256 newTime);
 
+    // log feedback data on chain for aggregation and graph
+    event Feedback(address user, address treasury, string feedback);
+
     // initiation participant token balances
     mapping(address => uint256) private _staked;
 
@@ -174,6 +177,19 @@ contract RiteOfMoloch is ERC721, AccessControl {
 
     }
 
+    /**
+    * @dev Allows initiates to log permanent feedback data on-chain
+    * @param feedback "Developers do something!"
+    * Doesn't change contract state; simply passes call-data through an event
+    */
+    function cryForHelp(string calldata feedback) public {
+
+        require(balanceOf(msg.sender) == 1, "Only cohort participants!");
+
+        emit Feedback(msg.sender, treasury, feedback);
+
+    }
+
     /*************************
      ACCESS CONTROL FUNCTIONS
      *************************/
@@ -266,26 +282,30 @@ contract RiteOfMoloch is ERC721, AccessControl {
     */
     function _claim(uint256 _userIndex) internal virtual returns (bool) {
 
+        address msgSender = msg.sender;
         // enforce that the initiate has stake
-        require(_staked[msg.sender] > 0, "User has no stake!!");
+        require(_staked[msgSender] > 0, "User has no stake!!");
 
         // enforce that the function caller and index match
-        require(allInitiates[_userIndex] == msg.sender, "Can only claim your own stake!");
+        require(allInitiates[_userIndex] == msgSender, "Can only claim your own stake!");
 
         // store the user's balance
-        uint256 balance = _staked[msg.sender];
+        uint256 balance = _staked[msgSender];
 
-        // adjust the balance
-        _staked[msg.sender] = 0;
+        // delete the balance
+        delete _staked[msgSender];
+
+        // delete the starting timestamp
+        delete initiationStart[msgSender];
 
         // the initiate has graduated; delete them from initiate tracking
         delete allInitiates[_userIndex];
 
         // log data for this successful claim
-        emit Claim(msg.sender, balance);
+        emit Claim(msgSender, balance);
 
         // return the new member's original stake
-        return _token.transferFrom(address(this), msg.sender, balance);
+        return _token.transferFrom(address(this), msgSender, balance);
 
     }
 
