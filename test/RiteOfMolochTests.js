@@ -80,8 +80,7 @@ describe("Rite of Moloch Contract", function () {
 
   // `beforeEach` will run before each test, re-deploying the contract every
   // time. It receives a callback, which can be async.
-  beforeEach(async function () {
-
+  before(async function () {
     provider = ethers.provider;
     // Get the ContractFactory and Signers here.
     RiteOfMoloch = await ethers.getContractFactory("RiteOfMoloch");
@@ -105,12 +104,18 @@ describe("Rite of Moloch Contract", function () {
       raidABI,
       provider
     );
+
+     //get amount of raid to be transferred to fund member wallet for initiations.
+     const raidAmount = ethers.utils.parseEther("100000");
+     //impersonate whale and send some raid to specified address.
+     impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
   });
 
   // You can nest describe calls to create subsections.
   describe("Deployment", function () {
 
     it("Should set the right ADMIN", async function () {
+
       //convert role string to 32byte keccak hash
       const ADMIN = ethers.utils.id("ADMIN");
       //check if contract deployer has been assigned that role
@@ -129,6 +134,7 @@ describe("Rite of Moloch Contract", function () {
   });
 
   describe("Admin and Operator only functions", function () {
+
     it("should Not be able to change minimum stake", async function () {
 
       //check if non admin can call admin function
@@ -143,8 +149,6 @@ describe("Rite of Moloch Contract", function () {
 
       //change min stake with admin account
       await riteOfMoloch.connect(owner).setMinimumStake(11);
-      //wait for tx to be mined
-      // await tx.wait();
       //retrieve new staking amount
       const stake = await riteOfMoloch.minimumStake();
       //check to see if staking amount has changed
@@ -153,15 +157,13 @@ describe("Rite of Moloch Contract", function () {
 
     it("should be able to change the max time", async function () {
 
-      const newMaxtime = 1000000000;
+      const newMaxTime = 1000000000;
       // set new max duration with owner acct
-      await riteOfMoloch.setMaxDuration(newMaxtime);
-      //wait for tx to be mined
-      // await tx.wait();
+      await riteOfMoloch.setMaxDuration(newMaxTime);
       //check max time
       const maxDuration = await riteOfMoloch.maximumTime();
       //check to make sure max time has been changed
-      expect(maxDuration.toString()).to.equal(newMaxtime.toString());
+      expect(maxDuration.toString()).to.equal(newMaxTime.toString());
     });
 
     it("should NOT be able to change the max time", async function () {
@@ -176,21 +178,19 @@ describe("Rite of Moloch Contract", function () {
   });
 
   describe("Initiate Rites", function () {
-
     it("should join the initiation", async function () {
-
+      
       //get initial raid balance of contract
       const initialBalance = await raidTokenContract.balanceOf(
         riteOfMoloch.address
       );
-      //get amount of raid to be transferred to member wallet for initiations.
-      const raidAmount = ethers.utils.parseEther("100000");
-      //impersonate whale and send some raid to specified address.
-      impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
+     
+      // get minimum stake amount from contract instance
+      const minStake = await riteOfMoloch.minimumStake();
       //approve contract to spend raid.
       await raidTokenContract
         .connect(owner)
-        .approve(riteOfMoloch.address, minimumStakeAmount);
+        .approve(riteOfMoloch.address, minStake);
       //call joinInitiation with what should be a member of the s3Cohort dao included in the constructor
       const join = await riteOfMoloch.joinInitiation(member);
       //wait for tx to be mined
@@ -206,22 +206,11 @@ describe("Rite of Moloch Contract", function () {
       //check if member is listed in emitted initiation event
       expect(event[0].args.newInitiate.toLowerCase()).to.equal(member);
       //check that correct amount of raid was transferred.
-      expect(endingBalance.sub(initialBalance)).to.equal(minimumStakeAmount);
+      expect(endingBalance.sub(initialBalance)).to.equal(minStake);
     });
 
-    //
     it("should NOT be able to re-join the initiation", async function () {
 
-      //get amount of raid to be transferred to member wallet for initiations.
-      const raidAmount = ethers.utils.parseEther("100000");
-      //impersonate whale and send some raid to specified address.
-      impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
-      //approve contract to spend raid.
-      await raidTokenContract
-        .connect(owner)
-        .approve(riteOfMoloch.address, minimumStakeAmount);
-      //join initiation
-      const tx = await riteOfMoloch.joinInitiation(member);
       //make sure you cannot re-join the initiation with the same address.
       await expect(riteOfMoloch.joinInitiation(member)).to.be.revertedWith(
         "Already joined the initiation!"
@@ -230,19 +219,14 @@ describe("Rite of Moloch Contract", function () {
 
     it("should get all the failed initiates", async function () {
 
-      //get amount of raid to be transferred to member wallet for initiations.
-      const raidAmount = ethers.utils.parseEther("100000");
-      //impersonate whale and send some raid to specified address.
-      impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
+      // get minimum stake amount from contract instance
+      const minStake = await riteOfMoloch.minimumStake();
       //approve contract to spend raid.
       await raidTokenContract
         .connect(owner)
-        .approve(riteOfMoloch.address, minimumStakeAmount.mul(addrs.length));
-      //populate the all initiates array
+        .approve(riteOfMoloch.address, minStake.mul(addrs.length));
+      // //populate the all initiates array
       for (let address of addrs) {
-        await raidTokenContract
-          .connect(owner)
-          .approve(riteOfMoloch.address, minimumStakeAmount);
         const tx = await riteOfMoloch.joinInitiation(address.address);
         await tx.wait();
       }
@@ -256,43 +240,61 @@ describe("Rite of Moloch Contract", function () {
       //check length of sacrifices array.
       expect(
         sacrifices.failedInitiates.length && sacrifices.indices.length
-      ).to.equal(addrs.length);
+      ).to.equal(addrs.length + 1);
     });
 
-    it("should sacrifice all failed initiates", async function () {
+    it("should be able to claim member account's staked raid", async function(){
 
-      //get amount of raid to be transferred to member wallet for initiations.
-      const raidAmount = ethers.utils.parseEther("100000");
-      //impersonate whale and send some raid to specified address.
-      impersonateAndTransfer(whaleWallet, owner.address, raidAmount);
-      //calculate the total approval amount
-      const approvalAmount = ethers.utils.parseEther((10 * addrs.length).toString());
-      //approve the total number of tokens
-      await raidTokenContract
-          .connect(owner)
-          .approve(riteOfMoloch.address, approvalAmount);
-      //set maximum time to 1
-      const maxTime = await riteOfMoloch.setMaxDuration(1);
-      await maxTime.wait();
+      // get minimum stake.
+      const minStake = await riteOfMoloch.minimumStake();
+       //impersonate member account
+       await hre.network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [member],
+      });
+      const sacrificeMember = await ethers.getSigner(member);
+      
+      //check member accounts stake amount
+      const stakeAmount = await riteOfMoloch.connect(sacrificeMember).claimStake(0);
+      const promise = await stakeAmount.wait()
+       //filter emitted events for "claim" event
+       const eventArray = promise.events.filter((e) => {
+        return e.event == "Claim";
+      });
 
-      //populate the all initiates array
-      for (let address of addrs) {
+      expect(eventArray[0].args.claimAmount).to.equal(minStake);
+    });
 
-        const tx = await riteOfMoloch.joinInitiation(address.address);
-        await tx.wait();
-      }
+    it("should NOT be able to claim non-member account's staked raid", async function(){
+
+        //make sure claimStake is reverted.
+     await expect(riteOfMoloch.connect(addr1).claimStake(1)).to.be.revertedWith("You must be a member!");
+    });
+
+    it("should NOT be able sacrifice failed initiates from non member account", async function () {
 
       //get all sacrifices
       const sacrifices = await riteOfMoloch.getSacrifices();
 
+      //check that sacrifice is reverted when called by a nonmember;
+      await expect(
+        riteOfMoloch
+          .connect(addr2)
+          .sacrifice(sacrifices.failedInitiates, sacrifices.indices)
+      ).to.be.revertedWith("You must be a member!");
+    });
+
+    it("should sacrifice all failed initiates", async function () {
+
+      //get all sacrifices
+      const sacrifices = await riteOfMoloch.getSacrifices();
       //impersonate member account
       await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [member],
       });
-      
-      const sacrificeMember = await ethers.getSigner(member);
 
+      const sacrificeMember = await ethers.getSigner(member);
       //call sacrifice from impersonated member account
       const sacrifice = await riteOfMoloch
         .connect(sacrificeMember)
@@ -305,29 +307,9 @@ describe("Rite of Moloch Contract", function () {
       });
 
       //check that number of sacrifices is equal to the number of failed initiates.
-      expect(eventArray.length).to.equal(addrs.length);
+      expect(eventArray.length).to.equal(addrs.length + 1);
     });
 
-    it("should NOT be able claim stake of all failed initiates from non member account", async function () {
-      //populate the all initiates array
-      for (let address of addrs) {
-        const tx = await riteOfMoloch.joinInitiation(address.address);
-        await tx.wait();
-      }
-
-      //set maximum time to 1
-      const maxTime = await riteOfMoloch.setMaxDuration(1);
-      await maxTime.wait();
-
-      //get all sacrifices
-      const sacrifices = await riteOfMoloch.getSacrifices();
-
-      //check that sacrifice is reverted when called by a nonmember;
-      await expect(
-        riteOfMoloch
-          .connect(addr2)
-          .sacrifice(sacrifices.failedInitiates, sacrifices.indices)
-      ).to.be.revertedWith("You must be a member!");
-    });
+   
   });
 });
