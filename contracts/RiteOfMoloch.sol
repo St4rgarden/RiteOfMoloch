@@ -218,7 +218,7 @@ contract RiteOfMoloch is ERC721, AccessControl {
     function setMaxDuration(uint256 newMaxTime) public onlyRole(OPERATOR) {
 
         // enforce that the minimum time is greater than 1 week
-        require(newMaxTime > 7 days, "Minimum duration must be greater than 1 week!");
+        require(newMaxTime > 0, "Minimum duration must be greater than 0!");
 
         // set the maximum length of time for initiations
         maximumTime = newMaxTime;
@@ -361,9 +361,6 @@ contract RiteOfMoloch is ERC721, AccessControl {
             // enforce that the failed initiate and indices arrays are a match
             require(_failedInitiates[i] == allInitiates[_indices[i]], "You can't sacrifice the innocent!");
 
-            // change the sacrifice's balance
-            _staked[initiate] = 0;
-
             // calculate the total blood debt
             total += balance;
 
@@ -373,6 +370,11 @@ contract RiteOfMoloch is ERC721, AccessControl {
             // remove the sacrifice from the initiate array
             delete allInitiates[_indices[i]];
 
+            // remove the sacrifice's balance
+            delete _staked[initiate];
+
+            // remove the sacrifice's starting time
+            delete initiationStart[initiate];
         }
 
         // drain the life force from the sacrifice
