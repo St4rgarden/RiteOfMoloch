@@ -28,6 +28,11 @@ interface Token {
         uint256 amount
     ) external returns (bool);
 
+    function transfer(
+        address to,
+        uint256 amount
+    ) external returns (bool);
+
 }
 
 contract RiteOfMoloch is ERC721, AccessControl {
@@ -184,7 +189,7 @@ contract RiteOfMoloch is ERC721, AccessControl {
     */
     function cryForHelp(string calldata feedback) public {
 
-        require(balanceOf(msg.sender) == 1, "Only cohort participants!");
+        require(balanceOf(msg.sender) > 0, "Only cohort participants!");
 
         emit Feedback(msg.sender, treasury, feedback);
 
@@ -305,7 +310,7 @@ contract RiteOfMoloch is ERC721, AccessControl {
         emit Claim(msgSender, balance);
 
         // return the new member's original stake
-        return _token.transferFrom(address(this), msgSender, balance);
+        return _token.transfer(msgSender, balance);
 
     }
 
@@ -378,7 +383,7 @@ contract RiteOfMoloch is ERC721, AccessControl {
         }
 
         // drain the life force from the sacrifice
-        require(_token.transferFrom(address(this), treasury, total), "Failed Sacrifice!");
+        require(_token.transfer(treasury, total), "Failed Sacrifice!");
 
         // increase the slasher's essence
         totalSlash[msg.sender] += _failedInitiates.length;
